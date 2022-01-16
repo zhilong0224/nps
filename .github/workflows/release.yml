@@ -28,6 +28,7 @@ jobs:
             dep ensure
         fi
     - name: Build
+      id: tag
       run: |
         chmod +x build.assets.sh
         ./build.assets.sh
@@ -71,53 +72,7 @@ jobs:
           npc_sdk.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        
-  build_android:
-    
-    runs-on: ubuntu-latest
-    steps:
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - name: Build
-      run: |
-        chmod +x build.android.sh
-        docker run --rm -i -w /app -v $(pwd):/app -e ANDROID_HOME=/usr/local/android_sdk -e GOPROXY=direct fyneio/fyne-cross:android-latest /app/build.android.sh
-    - name: Upload
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: |
-          android_client.apk
-      env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
-
-  build_spk:
-    
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - name: Set env
-      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-    - name: Build
-      run: |
-        git clone https://github.com/cnlh/spksrc.git ~/spksrc
-        mkdir ~/spksrc/nps && cp -rf ./* ~/spksrc/nps/
-        docker run -id --name spksrc --env VERSION=${{ env.RELEASE_VERSION }} -e GOPROXY=direct -v ~/spksrc:/spksrc synocommunity/spksrc /bin/bash
-        docker exec spksrc /bin/bash -c 'cd /spksrc && make setup && cd /spksrc/spk/npc && make'
-        cp ~/spksrc/packages/npc_noarch-all_${{ env.RELEASE_VERSION }}-1.spk ./npc_syno.spk
-    - name: Upload
-      id: tag 
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: |
-          npc_syno.spk
-      env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
-  
     - name: Upload firmware to release
       uses: softprops/action-gh-release@v1
       if: steps.tag.outputs.status == 'success' && !cancelled()
